@@ -12,6 +12,7 @@ from pathlib import Path
 
 from spack.spec import Spec, CompilerSpec
 from spack.detection import DetectedPackage
+from spack.util.module_cmd import path_from_modules
 import spack.util.spack_yaml as syaml
 
 
@@ -126,7 +127,13 @@ class CrayPE:
 
             spec_txt = " ".join(CRAY2SPACK[module.name])
             spec = Spec(spec_txt, external_modules=[module.fullname])
-            packages.append(DetectedPackage(spec, None))
+            prefix = path_from_modules(spec.external_modules)
+
+            if prefix is None:
+                print("🕵️", "skipping", module, "(prefix path could not be deduced from module file)")
+                continue
+
+            packages.append(DetectedPackage(spec, prefix))
         return packages
 
 
