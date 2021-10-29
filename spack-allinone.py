@@ -125,7 +125,7 @@ class CrayPE:
                 continue
 
             spec_txt = " ".join(CRAY2SPACK[module.name])
-            spec = Spec(spec_txt, external_modules=[module.fullname])
+            spec = Spec(f'{spec_txt}@{module.version}', external_modules=[module.fullname])
             packages.append(DetectedPackage(spec, None))
         return packages
 
