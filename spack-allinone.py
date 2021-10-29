@@ -207,12 +207,13 @@ def to_config_data(packages):
     from spack.detection.common import _pkg_config_dict
 
     buildable = True
-    pkg_to_cfg, all_new_specs = {}, []
+    pkg_to_cfg = {}
     for package_name, entries in detected_packages.items():
         pkg_config = _pkg_config_dict(entries)
-        all_new_specs.extend(
-            [spack.spec.Spec(x["spec"]) for x in pkg_config.get("externals", [])]
-        )
+        # Only keep a prefix
+        for external in pkg_config["externals"]:
+            if "modules" in external and "prefix" in external:
+                del external["prefix"]
         if buildable is False:
             pkg_config["buildable"] = False
         pkg_to_cfg[package_name] = pkg_config
