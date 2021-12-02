@@ -1,8 +1,10 @@
 #%Module
 
-set SPACK_CSCS_CONFIGS_ROOT "<EDIT-THIS>/spack-cscs/config-generator/generated-configs"
+set moduledir [file dirname $ModulesCurrentModulefile]
+set SPACK_CSCS_CONFIGS_ROOT "$moduledir/../../generated-configs"
 
-prereq cdt cdt-cuda
+# todo: make this work, we need "a or b" not "a and b"
+#prereq cdt cdt-cuda
 
 set loaded_mods [split $::env(LOADEDMODULES) :]
 set cdt_mod [lsearch -inline $loaded_mods cdt*]
