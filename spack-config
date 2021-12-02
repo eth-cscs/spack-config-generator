@@ -1,0 +1,18 @@
+#%Module
+
+set SPACK_CSCS_CONFIGS_ROOT "<EDIT-THIS>/spack-cscs/config-generator/generated-configs"
+
+prereq cdt cdt-cuda
+
+set loaded_mods [split $::env(LOADEDMODULES) :]
+set cdt_mod [lsearch -inline $loaded_mods cdt*]
+set cdt_name [string map {/ -} $cdt_mod]
+
+set SPACK_CDT_CONFIG_ROOT "$SPACK_CSCS_CONFIGS_ROOT/$cdt_name"
+
+if { [file exists $SPACK_CDT_CONFIG_ROOT] == 1 } { 
+  setenv SPACK_SYSTEM_CONFIG_PATH "$SPACK_CDT_CONFIG_ROOT"
+} else {
+  puts stderr "$SPACK_CDT_CONFIG_ROOT does not exist"
+  exit 1
+}
