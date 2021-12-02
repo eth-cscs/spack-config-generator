@@ -125,9 +125,32 @@ class CrayPE:
                 continue
 
             spec_txt = " ".join(CRAY2SPACK[module.name])
-            spec = Spec(f'{spec_txt}@{module.version}', external_modules=[module.fullname])
+            spec = Spec(
+                f"{spec_txt}@{module.version}", external_modules=[module.fullname]
+            )
             packages.append(DetectedPackage(spec, None))
         return packages
+
+    def _generate_compilers(self, all_compilers):
+        from spack.compilers import _to_dict
+
+        compilers = []
+        for compiler_module in self._compilers:
+
+            def _match_compiler(compiler_module_name):
+                # TODO nvidia compiler name is nvhpc
+                for compiler in available_compilers:
+                    if compiler_module.fullname in compiler.modules:
+                        return compiler
+                return None
+
+            found_compiler = _match_compiler(compiler_module.fullname)
+            if found_compiler:
+                compilers.append(_to_dict(found_compiler))
+            else:
+                print("⚠️", f"compiler {compiler_module} not found")
+
+        return compilers
 
 
 def all_craypes():
@@ -222,6 +245,10 @@ def to_config_data(packages):
 
 
 if __name__ == "__main__":
+    from spack.compilers import find_compilers
+
+    available_compilers = find_compilers()
+
     pkgs = []
     pkgs.extend(detect_mkl())
     pkgs.extend(detect_cuda())
@@ -232,7 +259,12 @@ if __name__ == "__main__":
         cpe_pkgs = pkgs.copy()
         cpe_pkgs.extend(cpe._generate_packages())
 
-        packages_yaml_path = Path(f'./generated-configs/{cpe}')
-        packages_yaml_path.mkdir(parents=True)
-        with open(packages_yaml_path / 'packages.yaml', 'w') as yaml_file:
+        cpe_configs_path = Path(f"./generated-configs/{cpe}")
+        cpe_configs_path.mkdir(parents=True, exist_ok=True)
+
+        with open(cpe_configs_path / "packages.yaml", "w") as yaml_file:
             syaml.dump_config(to_config_data(cpe_pkgs), yaml_file)
+
+        cpe_compilers = cpe._generate_compilers(available_compilers)
+        with open(cpe_configs_path / "compilers.yaml", "w") as yaml_file:
+            syaml.dump_config({"compilers": cpe_compilers}, yaml_file)
