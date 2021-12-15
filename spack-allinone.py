@@ -10,6 +10,7 @@
 import re
 from pathlib import Path
 
+from spack.version import Version
 from spack.spec import Spec, CompilerSpec
 from spack.detection import DetectedPackage
 import spack.util.spack_yaml as syaml
@@ -136,21 +137,23 @@ class CrayPE:
 
         compilers = []
         for compiler_module in self._compilers:
+            match = lambda c: (
+                len(c.modules) > 0 and
+                c.name == compiler_module.name and
+                c.version >= Version(compiler_module.version)
+            )
 
-            def _match_compiler(compiler_module_name):
-                # TODO nvidia compiler name is nvhpc
-                for compiler in available_compilers:
-                    if compiler_module.fullname in compiler.modules:
-                        return compiler
-                return None
-
-            found_compiler = _match_compiler(compiler_module.fullname)
-            if found_compiler:
-                compilers.append(_to_dict(found_compiler))
-            else:
+            found_compilers = [c for c in all_compilers if match(c)]
+            if len(found_compilers) == 0:
                 print("⚠️", f"compiler {compiler_module} not found")
+                continue
 
-        return compilers
+            for found_compiler in found_compilers:
+                compilers.append(found_compiler)
+
+        compilers = sorted(compilers, key=lambda c: (c.name, c.version))
+
+        return [_to_dict(c) for c in compilers]
 
 
 def all_craypes():
