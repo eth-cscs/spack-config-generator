@@ -52,11 +52,11 @@ VALID_COMPILERS = [
 CRAY_PACKAGES = [
     "cray-jemalloc",
     "cray-R",
-    "cray-fftw",
+    # "cray-fftw", # dropped, because of cray compiler wrapper issues depending on whether cray-mpich is loaded first or not
     "cray-mpich",  # TODO cray-mpich-abi, cray-mpich-ucx, ... ??
     "cray-python",
     "cray-netcdf",
-    "cray-hdf5",
+    # "cray-hdf5", # dropped, because spack does not detect the prefix path correctly.
     "cray-petsc",
     "cray-libsci",
     "papi",
