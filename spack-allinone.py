@@ -233,7 +233,13 @@ def to_config_data(packages):
     from spack.detection.common import _pkg_config_dict
 
     buildable = True
-    pkg_to_cfg = {}
+    pkg_to_cfg = {
+        "all": {
+            "providers": {
+                "mpi": ["cray-mpich"]
+            }
+        }
+    }
     for package_name, entries in detected_packages.items():
         pkg_config = _pkg_config_dict(entries)
         # Only keep a prefix
