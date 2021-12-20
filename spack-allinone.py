@@ -259,7 +259,7 @@ if __name__ == "__main__":
     available_compilers = find_compilers()
 
     pkgs = []
-    pkgs.extend(detect_mkl())
+    #pkgs.extend(detect_mkl())
     pkgs.extend(detect_cuda())
 
     for cpe in all_craypes():
