@@ -44,6 +44,7 @@ VALID_COMPILERS = [
     "clang",
     "gcc",  # TODO gcc-cross-aarch
     "intel",  # TODO intel-classic, intel-oneapi, ... (on eiger)
+    "pgi",
     "nvidia",
     "rocm-compiler",
 ]
