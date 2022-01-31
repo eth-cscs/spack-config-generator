@@ -14,6 +14,8 @@ from spack.version import Version
 from spack.spec import Spec, CompilerSpec
 from spack.detection import DetectedPackage
 import spack.util.spack_yaml as syaml
+import spack.repo
+import spack.detection
 
 
 class Module:
@@ -214,6 +216,15 @@ def detect_cuda():
             )
     return cuda_pkgs
 
+def detect_executables():
+    # Cray's compiler wrappers depend on pkg-config, and in particular
+    # some packages Cray puts on the system have their pc files in a default search
+    # path, meaning that whenever Spack builds pkg-config, and you invoke the
+    # Cray compiler wrapper, or even module unload xyz, it fails, since Spack's
+    # pkg-config has different default paths. So, the easiest solution is to
+    # define pkg-config as an external and hope Spack uses this one by default.
+    return spack.detection.by_executable([spack.repo.get('pkg-config')])['pkg-config']
+
 
 def to_config_data(packages):
     # [DetectedPacakge] -> {package_name: [DetectedPackage]}
@@ -262,6 +273,7 @@ if __name__ == "__main__":
     pkgs = []
     #pkgs.extend(detect_mkl())
     pkgs.extend(detect_cuda())
+    pkgs.extend(detect_executables())
 
     for cpe in all_craypes():
         print("\t\t", cpe)
