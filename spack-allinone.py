@@ -249,7 +249,8 @@ def to_config_data(packages):
     pkg_to_cfg = {
         "all": {
             "providers": {
-                "mpi": ["cray-mpich"]
+                "mpi": ["cray-mpich"],
+                "pkgconfig": ["pkg-config", "pkgconf"]
             }
         }
     }
