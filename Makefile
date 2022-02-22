@@ -5,6 +5,7 @@ PATH := $(CURDIR)/eth-cscs-spack/bin:$(PATH)
 # caches, if that's somehow triggered.
 SPACK_DISABLE_LOCAL_CONFIG:=1
 SPACK_USER_CACHE_DIR:=$(CURDIR)/.spack
+CONFIG_FLAGS:=
 
 .PHONY: check-spack install clean
 
@@ -20,7 +21,7 @@ check-spack: eth-cscs-spack
 	@echo using $$(which spack) at $$(spack --version)
 
 generated-configs: eth-cscs-spack | check-spack 
-	./spack-allinone.py
+	./spack-allinone.py $(CONFIG_FLAGS)
 
 install: generated-configs
 	install -Dm 644 spack-config "$(DESTDIR)/modules/spack-config/1.0.0"
