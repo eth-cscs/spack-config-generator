@@ -304,7 +304,7 @@ if __name__ == "__main__":
         with open(cpe_configs_path / "upstreams.yaml", "w") as yaml_file:
             syaml.dump_config({
                 "upstreams": {
-                    "cscs": {
+                    "spack-config": {
                         "install_tree": args.upstream_path
                     }
                 }
