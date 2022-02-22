@@ -8,6 +8,7 @@
 # interpreter via InteractiveInterpreter.
 
 import re
+import argparse
 from pathlib import Path
 
 from spack.version import Version
@@ -268,6 +269,12 @@ def to_config_data(packages):
 if __name__ == "__main__":
     from spack.compilers import find_compilers
 
+    parser = argparse.ArgumentParser(description='Generate spack config.')
+    parser.add_argument('--upstream_path',
+        dest='upstream_path',
+        help='Path to upstream Spack database. An upstreams.yaml file is generated')
+    args = parser.parse_args()
+
     available_compilers = find_compilers()
 
     pkgs = []
@@ -290,3 +297,15 @@ if __name__ == "__main__":
         cpe_compilers = cpe._generate_compilers(available_compilers)
         with open(cpe_configs_path / "compilers.yaml", "w") as yaml_file:
             syaml.dump_config({"compilers": cpe_compilers}, yaml_file)
+
+        if not args.upstream_path:
+            continue
+
+        with open(cpe_configs_path / "upstreams.yaml", "w") as yaml_file:
+            syaml.dump_config({
+                "upstreams": {
+                    "spack-config": {
+                        "install_tree": args.upstream_path
+                    }
+                }
+            }, yaml_file)
