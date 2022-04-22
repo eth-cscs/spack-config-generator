@@ -317,11 +317,12 @@ if __name__ == "__main__":
         if not args.upstream_path:
             continue
 
-        with open(cpe_configs_path / "upstreams.yaml", "w") as yaml_file:
-            syaml.dump_config({
-                "upstreams": {
-                    "spack-config": {
-                        "install_tree": args.upstream_path
-                    }
-                }
-            }, yaml_file)
+        # disable upstreams for now
+        #with open(cpe_configs_path / "upstreams.yaml", "w") as yaml_file:
+        #    syaml.dump_config({
+        #        "upstreams": {
+        #            "spack-config": {
+        #                "install_tree": args.upstream_path
+        #            }
+        #        }
+        #    }, yaml_file)
