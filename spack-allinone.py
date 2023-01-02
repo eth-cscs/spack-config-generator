@@ -154,17 +154,18 @@ class CrayPE:
 
         compilers = []
         for compiler_module in self._compilers:
-            if host == "cray":
-                def match(c):
-                    return (
-                            len(c.modules) > 0 and
-                            c.name == compiler_module.name and
-                            c.version >= Version(compiler_module.version)
-                            )
+            def match(c):
+                # nVidia HPC module is called 'nvidia', while Spack calls it 'nvhpc'
+                compiler_module_name = compiler_module.name.replace('nvidia', 'nvhpc')
+                return (
+                        c.name == compiler_module_name and
+                        c.version >= Version(compiler_module.version)
+                        )
 
+            if host == "cray":
                 available_compilers = all_compilers[:]
 
-                found_compilers = [c for c in available_compilers if match(c)]
+                found_compilers = [c for c in available_compilers if match(c) and len(c.modules) > 0]
 
                 # TODO:
                 # currently spack detects nvhpc compilers based on the
@@ -179,14 +180,6 @@ class CrayPE:
                     for fc in found_compilers:
                         fc.modules = [m.replace("nvhpc", "nvidia") for m in fc.modules]
             elif host == "linux":
-                def match(c):
-                    # nVidia HPC module is called 'nvidia', while Spack calls it 'nvhpc'
-                    compiler_module_name = compiler_module.name.replace('nvidia', 'nvhpc')
-                    return (
-                            c.name == compiler_module_name and
-                            c.version >= Version(compiler_module.version)
-                            )
-
                 from spack.util.module_cmd import path_from_modules
 
                 available_compilers = []
