@@ -3,18 +3,18 @@
 set moduledir [file dirname $ModulesCurrentModulefile]
 set SPACK_CSCS_CONFIGS_ROOT "$moduledir/../../generated-configs"
 
-# todo: make this work, we need "a or b" not "a and b"
-#prereq cdt cdt-cuda
+prereq cray
+prereq cpe cpe-cuda
 
 set loaded_mods [split $::env(LOADEDMODULES) :]
-set cdt_mod [lsearch -inline $loaded_mods cdt*]
-set cdt_name [string map {/ -} $cdt_mod]
+set cpe_mod [lsearch -inline $loaded_mods cpe*]
+set cpe_name [string map {/ -} $cpe_mod]
 
-set SPACK_CDT_CONFIG_ROOT "$SPACK_CSCS_CONFIGS_ROOT/$cdt_name"
+set SPACK_CPE_CONFIG_ROOT "$SPACK_CSCS_CONFIGS_ROOT/$cpe_name"
 
-if { [file exists $SPACK_CDT_CONFIG_ROOT] == 1 } { 
-  setenv SPACK_SYSTEM_CONFIG_PATH "$SPACK_CDT_CONFIG_ROOT"
+if { [file exists $SPACK_CPE_CONFIG_ROOT] == 1 } {
+  setenv SPACK_SYSTEM_CONFIG_PATH "$SPACK_CPE_CONFIG_ROOT"
 } else {
-  puts stderr "$SPACK_CDT_CONFIG_ROOT does not exist"
+  puts stderr "$SPACK_CPE_CONFIG_ROOT does not exist"
   exit 1
 }
