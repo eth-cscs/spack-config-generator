@@ -41,6 +41,19 @@ def parse_modulerc(modulerc_path: Path):
     return modules
 
 
+def parse_lua_modulerc(modulerc_path: Path):
+    modules = []
+
+    with open(modulerc_path, "r") as modulerc_file:
+        for module in modulerc_file.readlines():
+            if not module.startswith(r"module_version"):
+                continue
+            module_namever = module[15:].split(',')[0].replace("\"", "")
+            modules.append(Module(module_namever))
+
+    return modules
+
+
 VALID_COMPILERS = [
     "aocc",
     "cce",
@@ -326,9 +339,16 @@ if __name__ == "__main__":
     from spack.compilers import find_compilers
 
     parser = argparse.ArgumentParser(description='Generate spack config.')
-    parser.add_argument('--upstream_path',
-        dest='upstream_path',
-        help='Path to upstream Spack database. An upstreams.yaml file is generated')
+    parser.add_argument('--current-cpe',
+        dest='just_current_cpe',
+        action='store_true',
+        default=False,
+        help='Whether to look for the CPE currently loaded, or for all the ones available on the system.')
+    parser.add_argument('--output-folder,-o',
+        dest='output_path',
+        default="./generated-configs",
+        type=Path,
+        help='Where to store the configuration files generated.')
     args = parser.parse_args()
 
     available_compilers = find_compilers()
@@ -338,13 +358,12 @@ if __name__ == "__main__":
     pkgs.extend(detect_cuda())
     pkgs.extend(detect_executables())
 
-    for cpe in all_craypes():
+    def generate_cpe_config(cpe, cpe_configs_path):
         print("\t\t", cpe)
 
         cpe_pkgs = pkgs.copy()
         cpe_pkgs.extend(cpe._generate_packages())
 
-        cpe_configs_path = Path(f"./generated-configs/{cpe}")
         cpe_configs_path.mkdir(parents=True, exist_ok=True)
 
         with open(cpe_configs_path / "packages.yaml", "w") as yaml_file:
@@ -354,15 +373,23 @@ if __name__ == "__main__":
         with open(cpe_configs_path / "compilers.yaml", "w") as yaml_file:
             syaml.dump_config({"compilers": cpe_compilers}, yaml_file)
 
-        if not args.upstream_path:
-            continue
+    if args.just_current_cpe:
+        import os
+        import os.path
+        from pathlib import PosixPath
 
-        # disable upstreams for now
-        #with open(cpe_configs_path / "upstreams.yaml", "w") as yaml_file:
-        #    syaml.dump_config({
-        #        "upstreams": {
-        #            "spack-config": {
-        #                "install_tree": args.upstream_path
-        #            }
-        #        }
-        #    }, yaml_file)
+        ENV_VARIABLE="LMOD_MODULERCFILE"
+        if ENV_VARIABLE not in os.environ.keys():
+            raise ValueError(f"No {ENV_VARIABLE} found. Check if a CPE is loaded with `module list`.")
+        lmods = os.environ["LMOD_MODULERCFILE"]
+
+        modulerc_path = PosixPath(lmods.split(':')[0])
+        PE_ROOT = PosixPath('/opt/cray/pe')
+
+        cpe_name, cpe_version = modulerc_path.relative_to(PE_ROOT).parts[:-1]
+
+        cpe = CrayPE(cpe_name, cpe_version, parse_lua_modulerc(modulerc_path))
+        generate_cpe_config(cpe, Path(f"{args.output_path.expanduser()}"))
+    else:
+        for cpe in all_craypes():
+            generate_cpe_config(cpe, Path(f"{args.output_path.expanduser()}/{cpe}"))
