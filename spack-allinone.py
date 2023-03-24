@@ -152,7 +152,7 @@ class CrayPE:
         packages = []
         for module in self._packages:
             if not module.name in CRAY2SPACK.keys():
-                print("⚠️", "skipping", module)
+                print("?", "skipping", module)
                 continue
 
             spec_txt = " ".join(CRAY2SPACK[module.name])
@@ -217,7 +217,7 @@ class CrayPE:
                 found_compilers = [c for c in available_compilers if match(c)]
 
             if len(found_compilers) == 0:
-                print("⚠️", f"compiler {compiler_module} not found")
+                print("?", f"compiler {compiler_module} not found")
                 continue
 
             for found_compiler in found_compilers:
@@ -304,7 +304,7 @@ def to_config_data(packages):
         try:
             Spec.ensure_valid_variants(pkg.spec)
         except Exception as e:
-            print("❌", e)
+            print("!", e)
             continue
 
         detected_packages[pkg.spec.name].append(pkg)
