@@ -11,10 +11,10 @@ CONFIG_FLAGS:=
 
 all: generated-configs
 
-eth-cscs-spack.tar.gz:
-	curl -Lfso $@ https://github.com/eth-cscs/spack/archive/refs/heads/develop.tar.gz
+spack.tar.gz:
+	curl -Lfso $@ https://github.com/spack/spack/archive/refs/heads/develop.tar.gz
 
-eth-cscs-spack: eth-cscs-spack.tar.gz
+eth-cscs-spack: spack.tar.gz
 	mkdir $@ && tar -xf $< --strip-components=1 -C $@
 
 check-spack: eth-cscs-spack
