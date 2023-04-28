@@ -148,6 +148,12 @@ class CrayPE:
             # `cray` is a required module to enable any other module
             required_modules = ["cray", module.fullname]
 
+            # Note:
+            # This is a workaround, since `cray-mpich` has `libfabric` as dependency,
+            # but it does not load it.
+            if module.name == "cray-mpich":
+                required_modules.append("libfabric")
+
             spec = Spec(
                 f"{spec_txt}@{module.version}", external_modules=required_modules
             )
