@@ -3,15 +3,15 @@
 # Requirements
 prereq cray
 prereq cpe cpe-cuda
-# TODO check that a spack instance is actually available
 
 # Where the generator is installed
-set SPACK_CONFIG_GENERATOR_ROOT 	"~/spack-config-generator"
+set SPACK_CONFIG_GENERATOR_ROOT 	"$::env(HOME)/spack-config-generator"
 # Where the on-the-fly generated configuration will be stored
-set SPACK_CPE_CONFIG_ROOT 		"~/.config/spack-config-generator"
+set SPACK_CPE_CONFIG_ROOT 		"$::env(HOME)/.config/spack-config-generator/$::env(CLUSTER_NAME)"
 
 # Cleanup
 exec rm -rf $SPACK_CPE_CONFIG_ROOT/*
+exec mkdir -p $SPACK_CPE_CONFIG_ROOT
 
 # Generate new one
 exec $SPACK_CONFIG_GENERATOR_ROOT/spack-allinone.py --current-cpe --output-folder $SPACK_CPE_CONFIG_ROOT > $SPACK_CPE_CONFIG_ROOT/output.log
