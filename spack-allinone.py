@@ -143,8 +143,13 @@ class CrayPE:
                 continue
 
             spec_txt = " ".join(CRAY2SPACK[module.name])
+
+            # Note:
+            # `cray` is a required module to enable any other module
+            required_modules = ["cray", module.fullname]
+
             spec = Spec(
-                f"{spec_txt}@{module.version}", external_modules=[module.fullname]
+                f"{spec_txt}@{module.version}", external_modules=required_modules
             )
             packages.append(DetectedPackage(spec, None))
         return packages
