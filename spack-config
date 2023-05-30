@@ -1,20 +1,20 @@
 #%Module
 
-set moduledir [file dirname $ModulesCurrentModulefile]
-set SPACK_CSCS_CONFIGS_ROOT "$moduledir/../../generated-configs"
+# Requirements
+prereq cray
+prereq cpe cpe-cuda
 
-# todo: make this work, we need "a or b" not "a and b"
-#prereq cdt cdt-cuda
+# Where the generator is installed
+set SPACK_CONFIG_GENERATOR_ROOT 	"$::env(HOME)/spack-config-generator"
+# Where the on-the-fly generated configuration will be stored
+set SPACK_CPE_CONFIG_ROOT 		"$::env(HOME)/.config/spack-config-generator/$::env(CLUSTER_NAME)"
 
-set loaded_mods [split $::env(LOADEDMODULES) :]
-set cdt_mod [lsearch -inline $loaded_mods cdt*]
-set cdt_name [string map {/ -} $cdt_mod]
+# Cleanup
+exec rm -rf $SPACK_CPE_CONFIG_ROOT/*
+exec mkdir -p $SPACK_CPE_CONFIG_ROOT
 
-set SPACK_CDT_CONFIG_ROOT "$SPACK_CSCS_CONFIGS_ROOT/$cdt_name"
+# Generate new one
+exec $SPACK_CONFIG_GENERATOR_ROOT/spack-allinone.py --current-cpe --output-folder $SPACK_CPE_CONFIG_ROOT > $SPACK_CPE_CONFIG_ROOT/output.log
 
-if { [file exists $SPACK_CDT_CONFIG_ROOT] == 1 } { 
-  setenv SPACK_SYSTEM_CONFIG_PATH "$SPACK_CDT_CONFIG_ROOT"
-} else {
-  puts stderr "$SPACK_CDT_CONFIG_ROOT does not exist"
-  exit 1
-}
+# Setup spack
+setenv SPACK_SYSTEM_CONFIG_PATH "$SPACK_CPE_CONFIG_ROOT"
