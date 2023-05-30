@@ -1,20 +1,20 @@
 #%Module
 
-set moduledir [file dirname $ModulesCurrentModulefile]
-set SPACK_CSCS_CONFIGS_ROOT "$moduledir/../../generated-configs"
-
+# Requirements
 prereq cray
 prereq cpe cpe-cuda
 
-set loaded_mods [split $::env(LOADEDMODULES) :]
-set cpe_mod [lsearch -inline $loaded_mods cpe*]
-set cpe_name [string map {/ -} $cpe_mod]
+# Where the generator is installed
+set SPACK_CONFIG_GENERATOR_ROOT 	"$::env(HOME)/spack-config-generator"
+# Where the on-the-fly generated configuration will be stored
+set SPACK_CPE_CONFIG_ROOT 		"$::env(HOME)/.config/spack-config-generator/$::env(CLUSTER_NAME)"
 
-set SPACK_CPE_CONFIG_ROOT "$SPACK_CSCS_CONFIGS_ROOT/$cpe_name"
+# Cleanup
+exec rm -rf $SPACK_CPE_CONFIG_ROOT/*
+exec mkdir -p $SPACK_CPE_CONFIG_ROOT
 
-if { [file exists $SPACK_CPE_CONFIG_ROOT] == 1 } {
-  setenv SPACK_SYSTEM_CONFIG_PATH "$SPACK_CPE_CONFIG_ROOT"
-} else {
-  puts stderr "$SPACK_CPE_CONFIG_ROOT does not exist"
-  exit 1
-}
+# Generate new one
+exec $SPACK_CONFIG_GENERATOR_ROOT/spack-allinone.py --current-cpe --output-folder $SPACK_CPE_CONFIG_ROOT > $SPACK_CPE_CONFIG_ROOT/output.log
+
+# Setup spack
+setenv SPACK_SYSTEM_CONFIG_PATH "$SPACK_CPE_CONFIG_ROOT"
