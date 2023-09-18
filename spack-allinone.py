@@ -292,7 +292,7 @@ def detect_executables():
     # Cray compiler wrapper, or even module unload xyz, it fails, since Spack's
     # pkg-config has different default paths. So, the easiest solution is to
     # define pkg-config as an external and hope Spack uses this one by default.
-    return spack.detection.by_executable([spack.repo.PATH.get_pkg_class('pkg-config')])['pkg-config']
+    return spack.detection.by_path(['pkg-config'])['pkg-config']
 
 
 def to_config_data(packages):
