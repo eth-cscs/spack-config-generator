@@ -71,6 +71,7 @@ CRAY_PACKAGES = [
     "cray-R",
     # "cray-fftw", # dropped, because of cray compiler wrapper issues depending on whether cray-mpich is loaded first or not
     "cray-mpich",  # TODO cray-mpich-abi, cray-mpich-ucx, ... ??
+    "cray-pmi",
     "cray-python",
     "cray-netcdf",
     # "cray-hdf5", # dropped, because spack does not detect the prefix path correctly.
@@ -86,6 +87,7 @@ CRAY2SPACK = {
     "cray-hdf5-parallel": ("hdf5", "+mpi+hl+fortran"),
     "cray-jemalloc": ("jemalloc", ""),
     "cray-mpich": ("cray-mpich", ""),
+    "cray-pmi": ("cray-pmi", ""),
     "cray-libsci": ("cray-libsci", ""),
     "cray-fftw": ("cray-fftw", ""),
     "cray-netcdf-c": ("netcdf-c", "~parallel-netcdf+mpi"),
