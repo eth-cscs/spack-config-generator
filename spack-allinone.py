@@ -123,6 +123,7 @@ CRAY_PACKAGES = [
     "cray-petsc",
     "cray-libsci",
     "papi",
+    "libfabric",
 ]
 
 
@@ -146,6 +147,7 @@ CRAY2SPACK = {
     "cray-petsc-complex": ("petsc", "~int64+complex~cuda"),
     "cray-petsc-complex-64": ("petsc", "+int64+complex~cuda"),
     "papi": ("papi", ""),
+    "libfabric": ("libfabric", ""),
 }
 
 
