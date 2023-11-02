@@ -279,12 +279,34 @@ class CrayPE:
         return [_to_dict(c) for c in compilers]
 
 
+def detect_all_craycscs():
+    """
+    Return a dictionary (version : str  => craycscs_module :Module)
+    with all available version on the system.
+    """
+    module_name = "cray"
+    CRAYCSCS_MODULE_ROOT = PosixPath(f"/etc/cscs-modules/{module_name}")
+    craycscs_modules = dict()
+    for modulerc_filepath in list(CRAYCSCS_MODULE_ROOT.glob("*.lua")):
+        module_version = modulerc_filepath.stem
+        craycscs_modules[module_version] = Module.fromdata(module_name, module_version)
+    return craycscs_modules
+
+
 def all_craypes():
+    """
+    Return list of CrayPE versions available on the system.
+    """
+    craycscs_modules = detect_all_craycscs()
+
     all_cpes = []
     for modulerc_path in PosixPath(r"/opt/cray").rglob(r"modulerc"):
         name, version = reversed([parent.name for parent in modulerc_path.parents][:2])
         modules = parse_modulerc(modulerc_path)
-        all_cpes.append(CrayPE(name, version, None, modules)) # TODO fix this
+
+        # Each CPE requires `cray` module with the same version.
+        craycscs_module = craycscs_modules[version]
+        all_cpes.append(CrayPE(name, version, craycscs_module, modules))
     return all_cpes
 
 
@@ -424,8 +446,9 @@ if __name__ == "__main__":
         with open(cpe_configs_path / "compilers.yaml", "w") as yaml_file:
             syaml.dump_config({"compilers": cpe_compilers}, yaml_file)
 
+
     if args.just_current_cpe:
-        # look for currently loaded cray module
+        # Look for currently loaded `cray` module.
         craycscs_module = None
         for module_loaded_fullname in os.environ["LOADEDMODULES"].split(":"):
             try:
@@ -440,7 +463,7 @@ if __name__ == "__main__":
         if craycscs_module is None:
             raise ValueError("Expected a cray module to be loaded.")
 
-        # look for currently loaded cpe information
+        # Look for currently loaded CPE
         ENV_VARIABLE="LMOD_MODULERCFILE"
         if ENV_VARIABLE not in os.environ.keys():
             raise ValueError(f"No {ENV_VARIABLE} found. Check if a CPE is loaded with `module list`.")
