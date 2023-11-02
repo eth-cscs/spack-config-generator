@@ -9,7 +9,9 @@
 
 import re
 import argparse
-from pathlib import Path
+import os
+
+from pathlib import PosixPath
 
 from spack.version import Version
 from spack.spec import Spec, CompilerSpec
@@ -24,11 +26,15 @@ class Module:
         self.fullname = namever
         self.name, self.version = self.fullname.split("/")
 
+    @classmethod
+    def fromdata(cls, name: str, ver: str):
+        return cls(f"{name}/{ver}")
+
     def __repr__(self):
         return self.fullname
 
 
-def parse_modulerc(modulerc_path: Path):
+def parse_modulerc(modulerc_path: PosixPath):
     modules = []
 
     with open(modulerc_path, "r") as modulerc_file:
@@ -41,7 +47,7 @@ def parse_modulerc(modulerc_path: Path):
     return modules
 
 
-def parse_lua_modulerc(modulerc_path: Path):
+def parse_lua_modulerc(modulerc_path: PosixPath):
     modules = []
 
     with open(modulerc_path, "r") as modulerc_file:
@@ -52,6 +58,45 @@ def parse_lua_modulerc(modulerc_path: Path):
             modules.append(Module(module_namever))
 
     return modules
+
+
+def load_os_modules(craycscs : Module):
+    def _detect_craycscs_modulefile(craycscs):
+        """
+        Given a loaded "cray" CSCS module, infer where the module file is located
+        """
+        for modules_path in map(PosixPath, os.environ["MODULEPATH"].split(":")):
+            craycscs_moduledir =  modules_path / (craycscs.fullname + ".lua")
+            print(f"testing {craycscs_moduledir}")
+            if craycscs_moduledir.exists():
+                return craycscs_moduledir
+        raise ValueError(f"modulefile for {craycscs} not found!")
+
+    def detect_os_modules(craycscs_modulefilepath : PosixPath):
+        def modules_from_dir(modulepath):
+            modules = []
+            for version in modulepath.iterdir():
+                if version != "default" and not version.name.startswith(".") and version.suffix != ".lua":
+                    module_name = modulepath.parts[-1]
+                    module_version = version.parts[-1]
+                    modules.append(Module.fromdata(module_name, module_version))
+            return modules
+
+        basic_os_modules = []
+        with open(craycscs_modulefilepath, "r") as craycscs_modulefile:
+            REGEX_MODULEPATH = r"prepend_path\(\"MODULEPATH\", \"(.*)\"\)"
+            for line in craycscs_modulefile.readlines():
+                m = re.match(REGEX_MODULEPATH, line.strip())
+                if m:
+                    assert(len(m.groups()) == 1)
+                    for new_modulepath in PosixPath(m.group(1)).iterdir():
+                        if new_modulepath.is_dir():
+                            new_modules = modules_from_dir(new_modulepath)
+                            basic_os_modules.extend(new_modules)
+        return basic_os_modules
+
+    craycscs_modulefile = _detect_craycscs_modulefile(craycscs)
+    return detect_os_modules(craycscs_modulefile)
 
 
 VALID_COMPILERS = [
@@ -71,12 +116,14 @@ CRAY_PACKAGES = [
     "cray-R",
     # "cray-fftw", # dropped, because of cray compiler wrapper issues depending on whether cray-mpich is loaded first or not
     "cray-mpich",  # TODO cray-mpich-abi, cray-mpich-ucx, ... ??
+    "cray-pmi",
     "cray-python",
     "cray-netcdf",
     # "cray-hdf5", # dropped, because spack does not detect the prefix path correctly.
     "cray-petsc",
     "cray-libsci",
     "papi",
+    "libfabric",
 ]
 
 
@@ -86,6 +133,7 @@ CRAY2SPACK = {
     "cray-hdf5-parallel": ("hdf5", "+mpi+hl+fortran"),
     "cray-jemalloc": ("jemalloc", ""),
     "cray-mpich": ("cray-mpich", ""),
+    "cray-pmi": ("cray-pmi", ""),
     "cray-libsci": ("cray-libsci", ""),
     "cray-fftw": ("cray-fftw", ""),
     "cray-netcdf-c": ("netcdf-c", "~parallel-netcdf+mpi"),
@@ -99,6 +147,7 @@ CRAY2SPACK = {
     "cray-petsc-complex": ("petsc", "~int64+complex~cuda"),
     "cray-petsc-complex-64": ("petsc", "+int64+complex~cuda"),
     "papi": ("papi", ""),
+    "libfabric": ("libfabric", ""),
 }
 
 
@@ -114,15 +163,15 @@ CRAY2SPACK = {
 import spack.platforms
 host = str(spack.platforms.host())
 
-
 class CrayPE:
     """
     CrayPE (CPE) / CrayDT (CDT)
     """
 
-    def __init__(self, name, version, modules: [(str, str)]):
+    def __init__(self, name, version, craycscs: Module, modules: [(str, str)]):
         self._name = name
         self._version = version
+        self._craycscs = craycscs
         self._setup_modules(modules)
 
     def __repr__(self):
@@ -145,8 +194,10 @@ class CrayPE:
             return not is_prgenv and (is_package(module) or is_compiler(module))
 
         all_modules = [module for module in modules if is_interesting(module)]
-        self._packages = [module for module in all_modules if is_package(module)]
         self._compilers = [module for module in all_modules if is_compiler(module)]
+        self._packages = [module for module in all_modules if is_package(module)]
+
+        self._packages.extend(load_os_modules(self._craycscs))
 
     def _generate_packages(self):
         packages = []
@@ -159,7 +210,7 @@ class CrayPE:
 
             # Note:
             # `cray` is a required module to enable any other module
-            required_modules = ["cray", module.fullname]
+            required_modules = [self._craycscs.fullname, module.fullname]
 
             # Note:
             # This is a workaround, since `cray-mpich` has `libfabric` as dependency,
@@ -228,19 +279,41 @@ class CrayPE:
         return [_to_dict(c) for c in compilers]
 
 
+def detect_all_craycscs():
+    """
+    Return a dictionary (version : str  => craycscs_module :Module)
+    with all available version on the system.
+    """
+    module_name = "cray"
+    CRAYCSCS_MODULE_ROOT = PosixPath(f"/etc/cscs-modules/{module_name}")
+    craycscs_modules = dict()
+    for modulerc_filepath in list(CRAYCSCS_MODULE_ROOT.glob("*.lua")):
+        module_version = modulerc_filepath.stem
+        craycscs_modules[module_version] = Module.fromdata(module_name, module_version)
+    return craycscs_modules
+
+
 def all_craypes():
+    """
+    Return list of CrayPE versions available on the system.
+    """
+    craycscs_modules = detect_all_craycscs()
+
     all_cpes = []
-    for modulerc_path in Path(r"/opt/cray").rglob(r"modulerc"):
+    for modulerc_path in PosixPath(r"/opt/cray").rglob(r"modulerc"):
         name, version = reversed([parent.name for parent in modulerc_path.parents][:2])
         modules = parse_modulerc(modulerc_path)
-        all_cpes.append(CrayPE(name, version, modules))
+
+        # Each CPE requires `cray` module with the same version.
+        craycscs_module = craycscs_modules[version]
+        all_cpes.append(CrayPE(name, version, craycscs_module, modules))
     return all_cpes
 
 
 def detect_mkl():
     libs_search_paths = {
-        "intel-mkl": Path("/opt/intel").glob(r"compilers_and_libraries_*/linux/mkl"),
-        "intel-oneapi-mkl": Path("/opt/intel/oneapi/mkl").glob(r"*"),
+        "intel-mkl": PosixPath("/opt/intel").glob(r"compilers_and_libraries_*/linux/mkl"),
+        "intel-oneapi-mkl": PosixPath("/opt/intel/oneapi/mkl").glob(r"*"),
     }
 
     mkl_pkgs = []
@@ -261,7 +334,7 @@ def detect_cuda():
     for default_install_path in ["/usr/local", "/opt/nvidia"]:
         # note: cuda*/** is needed because of a strange installation path
         # which I don't know if it is an old standard one
-        for nvcc_exec in Path(default_install_path).rglob("cuda*/**/bin/nvcc"):
+        for nvcc_exec in PosixPath(default_install_path).rglob("cuda*/**/bin/nvcc"):
             cuda_root = nvcc_exec.parents[1]  # where is bin?
 
             # it's a symlink, so it will be considered (hopefully) via its real position
@@ -347,7 +420,7 @@ if __name__ == "__main__":
     parser.add_argument('--output-folder,-o',
         dest='output_path',
         default="./generated-configs",
-        type=Path,
+        type=PosixPath,
         help='Where to store the configuration files generated.')
     args = parser.parse_args()
 
@@ -373,11 +446,24 @@ if __name__ == "__main__":
         with open(cpe_configs_path / "compilers.yaml", "w") as yaml_file:
             syaml.dump_config({"compilers": cpe_compilers}, yaml_file)
 
-    if args.just_current_cpe:
-        import os
-        import os.path
-        from pathlib import PosixPath
 
+    if args.just_current_cpe:
+        # Look for currently loaded `cray` module.
+        craycscs_module = None
+        for module_loaded_fullname in os.environ["LOADEDMODULES"].split(":"):
+            try:
+                module_loaded = Module(module_loaded_fullname)
+                if module_loaded.name == "cray":
+                    craycscs_module = module_loaded
+                    print(f"Cray CSCS: {craycscs_module}")
+                    break
+            except:
+                pass
+
+        if craycscs_module is None:
+            raise ValueError("Expected a cray module to be loaded.")
+
+        # Look for currently loaded CPE
         ENV_VARIABLE="LMOD_MODULERCFILE"
         if ENV_VARIABLE not in os.environ.keys():
             raise ValueError(f"No {ENV_VARIABLE} found. Check if a CPE is loaded with `module list`.")
@@ -388,8 +474,8 @@ if __name__ == "__main__":
 
         cpe_name, cpe_version = modulerc_path.relative_to(PE_ROOT).parts[:-1]
 
-        cpe = CrayPE(cpe_name, cpe_version, parse_lua_modulerc(modulerc_path))
-        generate_cpe_config(cpe, Path(f"{args.output_path.expanduser()}"))
+        cpe = CrayPE(cpe_name, cpe_version, craycscs_module, parse_lua_modulerc(modulerc_path))
+        generate_cpe_config(cpe, PosixPath(f"{args.output_path.expanduser()}"))
     else:
         for cpe in all_craypes():
-            generate_cpe_config(cpe, Path(f"{args.output_path.expanduser()}/{cpe}"))
+            generate_cpe_config(cpe, PosixPath(f"{args.output_path.expanduser()}/{cpe}"))
